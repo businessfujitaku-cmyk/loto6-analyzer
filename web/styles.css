@@ -1,0 +1,155 @@
+/* LOTO6 Simulator Styles */
+
+/* info cells */
+.info-cell {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(71, 85, 105, 0.5);
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+}
+
+/* skeleton cards */
+.skeleton-card {
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(71, 85, 105, 0.3);
+  border-radius: 0.75rem;
+  height: 140px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.3; }
+}
+
+/* ticket cards */
+.ticket-card {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(71, 85, 105, 0.5);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  transition: transform 0.15s, border-color 0.15s;
+}
+.ticket-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(129, 140, 248, 0.5);
+}
+.ticket-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(129, 140, 248, 0.2);
+  color: #a5b4fc;
+  margin-bottom: 0.5rem;
+}
+.ball {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-weight: 800;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  background: linear-gradient(135deg, #6366f1, #06b6d4);
+  color: #fff;
+  margin: 2px;
+  animation: ballIn 0.3s ease-out both;
+}
+@keyframes ballIn {
+  from { opacity: 0; transform: scale(0.5); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.ticket-stats {
+  margin-top: 0.5rem;
+  font-size: 0.7rem;
+  color: #94a3b8;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+}
+
+/* heatmap cells */
+.hm-cell {
+  aspect-ratio: 1;
+  border-radius: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: transform 0.1s;
+  position: relative;
+  border: 1px solid rgba(71, 85, 105, 0.3);
+}
+.hm-cell:hover {
+  transform: scale(1.1);
+  z-index: 10;
+}
+.hm-num {
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1;
+}
+.hm-lv {
+  font-size: 0.55rem;
+  font-weight: 600;
+  margin-top: 2px;
+  opacity: 0.8;
+}
+
+/* level backgrounds */
+.lv1-bg { background: rgba(30, 41, 59, 0.6); color: #64748b; }
+.lv2-bg { background: rgba(96, 165, 250, 0.5); color: #fff; }
+.lv3-bg { background: rgba(251, 191, 36, 0.6); color: #1e293b; }
+.lv4-bg { background: rgba(52, 211, 153, 0.6); color: #1e293b; }
+.lv5-bg { background: rgba(248, 113, 113, 0.65); color: #fff; }
+.lv5-bg { animation: lv5pulse 2s ease-in-out infinite; }
+@keyframes lv5pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(248, 113, 113, 0.3); }
+  50% { box-shadow: 0 0 8px 2px rgba(248, 113, 113, 0.4); }
+}
+
+/* legend cells */
+.legend-cell {
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+/* tooltip */
+.tooltip {
+  position: fixed;
+  background: #1e293b;
+  border: 1px solid #475569;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  color: #e2e8f0;
+  pointer-events: none;
+  z-index: 100;
+  max-width: 200px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.tooltip.hidden { display: none; }
+
+/* spinner */
+.spin {
+  animation: spin 0.9s linear infinite;
+  display: inline-block;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* syncing state */
+.syncing-placeholder {
+  text-align: center;
+  padding: 2rem;
+  color: #64748b;
+  font-size: 0.9rem;
+}
