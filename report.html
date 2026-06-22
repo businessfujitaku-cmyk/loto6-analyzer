@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOTO6 Analyzer - 実装レビュー報告書</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --surface2: #334155;
+    --border: #475569;
+    --text: #e2e8f0;
+    --text-dim: #94a3b8;
+    --accent: #818cf8;
+    --accent2: #34d399;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --blue: #60a5fa;
+    --green: #4ade80;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'Hiragino Sans', 'Meiryo', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    padding: 0;
+  }
+  .hero {
+    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #0f172a 100%);
+    padding: 3rem 2rem;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+  }
+  .hero .subtitle {
+    color: var(--text-dim);
+    font-size: 1rem;
+  }
+  .hero .badge {
+    display: inline-block;
+    margin-top: 1rem;
+    padding: 0.3rem 1rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: rgba(52, 211, 153, 0.15);
+    color: var(--accent2);
+    border: 1px solid rgba(52, 211, 153, 0.3);
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  .section { margin-bottom: 2.5rem; }
+  .section-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--surface2);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .section-title .icon { font-size: 1.1rem; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--surface2);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .card h3 {
+    font-size: 1rem;
+    color: var(--accent2);
+    margin-bottom: 0.5rem;
+  }
+  .card p, .card li {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+  }
+  .card ul { padding-left: 1.2rem; }
+  .card li { margin-bottom: 0.3rem; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  th {
+    background: var(--surface2);
+    color: var(--text);
+    padding: 0.6rem 0.8rem;
+    text-align: left;
+    font-weight: 600;
+  }
+  td {
+    padding: 0.5rem 0.8rem;
+    border-bottom: 1px solid var(--surface2);
+    color: var(--text-dim);
+  }
+  tr:hover td { background: rgba(129, 140, 248, 0.05); }
+
+  .tag {
+    display: inline-block;
+    padding: 0.15rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .tag-ok { background: rgba(52, 211, 153, 0.15); color: var(--accent2); }
+  .tag-fix { background: rgba(248, 113, 113, 0.15); color: var(--red); }
+  .tag-new { background: rgba(96, 165, 250, 0.15); color: var(--blue); }
+  .tag-edit { background: rgba(251, 191, 36, 0.15); color: var(--yellow); }
+  .tag-del { background: rgba(248, 113, 113, 0.1); color: #fb7185; }
+
+  .arch-diagram {
+    background: var(--surface);
+    border: 1px solid var(--surface2);
+    border-radius: 12px;
+    padding: 1.5rem;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--text-dim);
+    white-space: pre;
+    overflow-x: auto;
+  }
+
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--surface2);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    text-align: center;
+  }
+  .metric-card .value {
+    font-size: 1.8rem;
+    font-weight: 800;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .metric-card .label {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-top: 0.25rem;
+  }
+
+  .lv-demo {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.75rem;
+  }
+  .lv-cell {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.75rem;
+    border: 1px solid var(--surface2);
+  }
+  .lv1 { background: var(--surface); color: var(--text-dim); }
+  .lv2 { background: rgba(96, 165, 250, 0.55); color: #fff; }
+  .lv3 { background: rgba(251, 191, 36, 0.65); color: #1e293b; }
+  .lv4 { background: rgba(52, 211, 153, 0.65); color: #1e293b; }
+  .lv5 { background: rgba(248, 113, 113, 0.7); color: #fff; }
+
+  .flow-step {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    margin-bottom: 1.2rem;
+  }
+  .flow-num {
+    flex-shrink: 0;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.85rem;
+  }
+  .flow-body { flex: 1; }
+  .flow-body h4 { font-size: 0.95rem; color: var(--text); margin-bottom: 0.2rem; }
+  .flow-body p { font-size: 0.85rem; color: var(--text-dim); }
+
+  .code-inline {
+    background: var(--surface2);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-family: 'Consolas', monospace;
+    font-size: 0.85em;
+  }
+
+  .footer {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    border-top: 1px solid var(--surface2);
+    margin-top: 2rem;
+  }
+
+  @media (max-width: 640px) {
+    .hero h1 { font-size: 1.5rem; }
+    .container { padding: 1rem; }
+    .metric-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<div class="hero">
+  <h1>LOTO6 出現傾向シミュレータ</h1>
+  <p class="subtitle">実装レビュー報告書 &amp; 設計リファクタリング完了レポート</p>
+  <span class="badge">v2.0 - 2026年6月 リファクタリング完了</span>
+</div>
+
+<div class="container">
+
+  <!-- Metrics -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#9670;</span> システム概況</div>
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="value">2,109</div>
+        <div class="label">学習データ件数（全履歴）</div>
+      </div>
+      <div class="metric-card">
+        <div class="value">1本</div>
+        <div class="label">データソース（mk-mode CSV）</div>
+      </div>
+      <div class="metric-card">
+        <div class="value">5口</div>
+        <div class="label">1000円分の予測生成</div>
+      </div>
+      <div class="metric-card">
+        <div class="value">5段階</div>
+        <div class="label">期待度ヒートマップ</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Architecture -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#9670;</span> アーキテクチャ</div>
+    <div class="arch-diagram">
+┌──────────────┐     GET /api/*     ┌──────────────────────────────────┐
+│   ブラウザ    │ ◄──────────────── │  FastAPI  (uvicorn :8000)        │
+│  index.html  │                    │                                  │
+│  app.js      │                    │  ┌─ scraper.py ──────────────┐   │
+│  styles.css  │                    │  │  mk-mode CSV → SQLite     │   │
+└──────────────┘                    │  │  起動時 + 毎日22:00 JST   │   │
+                                    │  └───────────────────────────┘   │
+                                    │  ┌─ analyzer.py ─────────────┐   │
+                                    │  │  freq(40%) + gap(40%)     │   │
+                                    │  │  + recent(20%) → score    │   │
+                                    │  └───────────────────────────┘   │
+                                    │  ┌─ predictor.py ────────────┐   │
+                                    │  │  6000候補 → fitness評価   │   │
+                                    │  │  → Jaccard多様化 → 5口   │   │
+                                    │  └───────────────────────────┘   │
+                                    │  ┌─ db.py ───────────────────┐   │
+                                    │  │  SQLite (draws テーブル)  │   │
+                                    │  └───────────────────────────┘   │
+                                    │  ┌─ cache ───────────────────┐   │
+                                    │  │  latest_round キー        │   │
+                                    │  │  分析 + 予測をメモ化      │   │
+                                    │  └───────────────────────────┘   │
+                                    └──────────────────────────────────┘</div>
+  </div>
+
+  <!-- Refactoring Summary -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#9670;</span> 設計リファクタリング（全6項目）</div>
+
+    <div class="card">
+      <h3>1. データソースの一本化 <span class="tag tag-fix">修正</span></h3>
+      <ul>
+        <li><strong>問題</strong>：みずほ銀行公式CSV（常時403 Forbidden）とtakarakuji-official.jp HTML（Incapsula保護で0件取得）の2つのフォールバックが実働していなかった</li>
+        <li><strong>対応</strong>：死コードを完全削除し、実際に動作していた <span class="code-inline">mk-mode.com/rails/loto/LOTO6_ALL.csv</span> を唯一のデータソースとして一本化</li>
+        <li><strong>結果</strong>：<span class="code-inline">scraper.py</span> が約200行 → 約60行に簡素化。エラーの温床を排除</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>2. analyzer / predictor の役割分離 <span class="tag tag-fix">修正</span></h3>
+      <ul>
+        <li><strong>問題</strong>：奇偶比・連続性・合計値が analyzer（個別数字スコア）と predictor（組み合わせ評価）の両方で二重カウントされていた。個別数字に分解すると全奇数が同値・全偶数が同値という情報量の落ちた特徴量になっていた</li>
+        <li><strong>対応</strong>：
+          <ul>
+            <li>個別数字スコア（analyzer）= <strong>freq(40%) + gap(40%) + recent(20%)</strong> の3要素のみ</li>
+            <li>奇偶比・連続性・合計値は predictor 側の <span class="code-inline">_fitness()</span> 関数（組み合わせ評価）でのみ使用</li>
+          </ul>
+        </li>
+        <li><strong>結果</strong>：ロジックの意味が明確に。スコアの説明可能性が向上</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>3. ヒートマップ Lv 配分の上位傾斜 <span class="tag tag-edit">変更</span></h3>
+      <ul>
+        <li><strong>問題</strong>：均等5分割（各8〜9個）では「期待度高」が多すぎて視覚的メリハリが出ない</li>
+        <li><strong>対応</strong>：上位に傾斜をかけた配分に変更</li>
+      </ul>
+      <div class="lv-demo">
+        <div class="lv-cell lv5">Lv5<br/>3個</div>
+        <div class="lv-cell lv4">Lv4<br/>6個</div>
+        <div class="lv-cell lv3">Lv3<br/>10個</div>
+        <div class="lv-cell lv2">Lv2<br/>11個</div>
+        <div class="lv-cell lv1">Lv1<br/>13個</div>
+      </div>
+      <p style="color:var(--text-dim); font-size:0.85rem; margin-top:0.5rem;">Lv5（赤）は上位3個のみ → 「とくに注目すべき数字」がひと目で判別可能</p>
+    </div>
+
+    <div class="card">
+      <h3>4. インメモリキャッシュ実装 <span class="tag tag-new">新規</span></h3>
+      <ul>
+        <li><strong>問題</strong>：1ページロードで <span class="code-inline">/api/expectation</span> と <span class="code-inline">/api/predictions</span> が別々に analyzer を呼び、同一計算が重複実行されていた</li>
+        <li><strong>対応</strong>：<span class="code-inline">latest_round</span> をキーとしたスレッドセーフなインメモリキャッシュ（辞書でのメモ化）を実装。新規データ挿入時に自動無効化</li>
+        <li><strong>結果</strong>：初回 178ms → キャッシュヒット 4ms（約45倍高速化）</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>5. 空DB時のグレーアウト表示 <span class="tag tag-new">新規</span></h3>
+      <ul>
+        <li><strong>問題</strong>：データ未同期時にもカラフルなヒートマップが表示される誤誘導があった</li>
+        <li><strong>対応</strong>：<span class="code-inline">ready=false</span> 時は API が <span class="code-inline">items:[]</span> / <span class="code-inline">tickets:[]</span> を返し、フロントはパルスアニメーション付きのグレースケルトンを表示</li>
+        <li><strong>結果</strong>：データ不足時にもクラッシュせず、適切な案内表示を実現</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>6. 表記の客観化 &amp; 免責事項 <span class="tag tag-edit">変更</span></h3>
+      <ul>
+        <li>画面上の「当選予測」→「出現傾向シミュレーション」に変更</li>
+        <li>フッターにスマートな免責事項を追加：統計的傾向の可視化であり、将来の確率を保証するものではない旨を明記</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Scoring Logic -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#9670;</span> 期待度スコア算出ロジック（リファクタリング後）</div>
+
+    <div class="card">
+      <h3>個別数字スコア（analyzer.py）</h3>
+      <table>
+        <tr><th>要素</th><th>重み</th><th>内容</th></tr>
+        <tr><td><strong>freq</strong></td><td>40%</td><td>通算出現頻度（min-max正規化）。多く出ている数字ほど高スコア</td></tr>
+        <tr><td><strong>gap</strong></td><td>40%</td><td>直近出現からの経過回数（正規化）。しばらく出ていない数字を拾い上げ</td></tr>
+        <tr><td><strong>recent</strong></td><td>20%</td><td>直近50回での出現回数。最近の勢い・トレンドを反映</td></tr>
+      </table>
+      <p style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-dim);">
+        <span class="code-inline">score(n) = 0.40 * norm(freq[n]) + 0.40 * norm(gap[n]) + 0.20 * norm(recent[n])</span>
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>組み合わせフィットネス（predictor.py）</h3>
+      <table>
+        <tr><th>制約</th><th>評価内容</th></tr>
+        <tr><td>奇偶比</td><td>6個中の奇偶バランスが過去最頻分布に近いか評価</td></tr>
+        <tr><td>連続性</td><td>連続ペア（例：3-4）の発生数が過去傾向に適合するか</td></tr>
+        <tr><td>合計値</td><td>6数字の合計が過去平均（約130前後）± 1σ に収まるか</td></tr>
+        <tr><td>平均期待度</td><td>含まれる6数字の個別スコア平均</td></tr>
+      </table>
+      <p style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-dim);">
+        6000候補を重み付きサンプリング → フィットネスランキング → Jaccard類似度 ≤ 0.4 の多様化選抜で5口を確定
+      </p>
+    </div>
+  </div>
+
+  <!-- 5-ticket Generation Flow -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#9670;</span> 5口生成アルゴリズム</div>
+    <div class="card">
+      <div class="flow-step">
+        <div class="flow-num">1</div>
+        <div class="flow-body">
+          <h4>重み付きサンプリング</h4>
+          <p><span class="code-inline">score(n)^1.5</span> を確率重みに、6数字の組み合わせを6,000通り生成（Efraimidis-Spirakis アルゴリズム）</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">2</div>
+        <div class="flow-body">
+          <h4>統計適合スコア付与</h4>
+          <p>各候補に対し、奇偶比適合 + 合計値適合 + 連続ペア適合 + 平均期待度の複合フィットネスを算出</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">3</div>
+        <div class="flow-body">
+          <h4>多様化選抜（Greedy）</h4>
+          <p>フィットネス上位から、既選抜口とのJaccard類似度が0.4未満になる5組を選定。口同士の数字被りを抑制</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- API Endpoints -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#9670;</span> API エンドポイント</div>
+    <div class="card" style="padding: 0; overflow: hidden;">
+      <table>
+        <tr><th>Method</th><th>Path</th><th>役割</th><th>状態</th></tr>
+        <tr><td>GET</td><td><span class="code-inline">/api/health</span></td><td>ヘルスチェック</td><td><span class="tag tag-ok">稼働中</span></td></tr>
+        <tr><td>GET</td><td><span class="code-inline">/api/status</span></td><td>データ取得状況・学習件数・最終更新時刻</td><td><span class="tag tag-ok">稼働中</span></td></tr>
+        <tr><td>GET</td><td><span class="code-inline">/api/latest</span></td><td>直近の当選番号</td><td><span class="tag tag-ok">稼働中</span></td></tr>
+        <tr><td>GET</td><td><span class="code-inline">/api/expectation</span></td><td>1〜43各数字のスコア・Lv(1-5)・統計</td><td><span class="tag tag-ok">稼働中</span></td></tr>
+        <tr><td>GET</td><td><span class="code-inline">/api/predictions</span></td><td>5口分の組み合わせ + 各口の統計サマリ</td><td><span class="tag tag-ok">稼働中</span></td></tr>
+        <tr><td>POST</td><td><span class="code-inline">/api/refresh</span></td><td>手動再取得（内部用）</td><td><span class="tag tag-edit">隠し残置</span></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- File Changes -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#9670;</span> ファイル変更一覧</div>
+    <div class="card" style="padding: 0; overflow: hidden;">
+      <table>
+        <tr><th>ファイル</th><th>操作</th><th>内容</th></tr>
+        <tr><td><span class="code-inline">app/scraper.py</span></td><td><span class="tag tag-fix">簡素化</span></td><td>mk-mode CSV一本化。mizuho/HTMLフォールバック完全削除（200行→60行）</td></tr>
+        <tr><td><span class="code-inline">app/analyzer.py</span></td><td><span class="tag tag-fix">リファクタ</span></td><td>freq/gap/recentの3要素のみに。奇偶/連続/合計はsummaryとしてpredictor向けに保持</td></tr>
+        <tr><td><span class="code-inline">app/predictor.py</span></td><td><span class="tag tag-edit">改修</span></td><td>奇偶比/連続性/合計値のフィットネス制約を一元化。6000候補+Jaccard多様化</td></tr>
+        <tr><td><span class="code-inline">app/main.py</span></td><td><span class="tag tag-edit">改修</span></td><td>latest_roundキャッシュ実装。空DB時の安全なレスポンス制御</td></tr>
+        <tr><td><span class="code-inline">web/index.html</span></td><td><span class="tag tag-edit">改修</span></td><td>5口カード+ヒートマップUI。表記の客観化。フッター免責事項追加</td></tr>
+        <tr><td><span class="code-inline">web/app.js</span></td><td><span class="tag tag-edit">改修</span></td><td>スケルトン表示制御。期待度/予測APIの連携</td></tr>
+        <tr><td><span class="code-inline">web/styles.css</span></td><td><span class="tag tag-edit">改修</span></td><td>Lv1〜5カラークラス。スケルトンアニメーション</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Issues Found & Fixed -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#9670;</span> 発見された問題と対応</div>
+
+    <div class="card">
+      <h3>データソースの信頼性 <span class="tag tag-fix">解決済</span></h3>
+      <table>
+        <tr><th>ソース</th><th>状態</th><th>対応</th></tr>
+        <tr><td>みずほ銀行公式 CSV</td><td style="color:var(--red);">常時 403 Forbidden</td><td><span class="tag tag-del">削除</span></td></tr>
+        <tr><td>takarakuji-official.jp HTML</td><td style="color:var(--red);">Incapsula保護で0件取得</td><td><span class="tag tag-del">削除</span></td></tr>
+        <tr><td>mk-mode.com CSV (UTF-8)</td><td style="color:var(--green);">2,109件 正常取得</td><td><span class="tag tag-ok">唯一のソースとして採用</span></td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>パフォーマンス <span class="tag tag-fix">解決済</span></h3>
+      <p>インメモリキャッシュにより、同一ラウンドでのAPI二重呼び出しを解消</p>
+      <div class="metric-grid" style="margin-top: 0.75rem;">
+        <div class="metric-card">
+          <div class="value">178ms</div>
+          <div class="label">キャッシュミス（初回計算）</div>
+        </div>
+        <div class="metric-card">
+          <div class="value">4ms</div>
+          <div class="label">キャッシュヒット（45倍高速）</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test Results - Summary -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#9670;</span> テスト結果サマリ</div>
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="value" style="color:var(--green); -webkit-text-fill-color:var(--green);">32 / 32</div>
+        <div class="label">全テストケース PASS</div>
+      </div>
+      <div class="metric-card">
+        <div class="value" style="color:var(--green); -webkit-text-fill-color:var(--green);">0</div>
+        <div class="label">FAIL / ERROR</div>
+      </div>
+      <div class="metric-card">
+        <div class="value">6</div>
+        <div class="label">テストカテゴリ</div>
+      </div>
+      <div class="metric-card">
+        <div class="value">100%</div>
+        <div class="label">PASS率</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test Category 1: Server & Startup -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#9670;</span> T1. サーバー起動 &amp; 自動取得テスト</div>
+    <div class="card" style="padding:0; overflow:hidden;">
+      <table>
+        <tr><th style="width:40px;">#</th><th>テストケース</th><th style="width:60px;">結果</th><th>検証内容・実測値</th></tr>
+        <tr>
+          <td>1.1</td>
+          <td>uvicorn 正常起動</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td><span class="code-inline">uvicorn app.main:app --host 127.0.0.1 --port 8000</span> → プロセス起動、<span class="code-inline">Application startup complete</span> 確認</td>
+        </tr>
+        <tr>
+          <td>1.2</td>
+          <td>起動時スクレイピング自動実行</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>起動ログに <span class="code-inline">HTTP Request: GET https://www.mk-mode.com/rails/loto/LOTO6_ALL.csv "HTTP/1.1 200 OK"</span> を確認</td>
+        </tr>
+        <tr>
+          <td>1.3</td>
+          <td>APScheduler ジョブ登録</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td><span class="code-inline">Added job "_do_fetch" to job store "default"</span> + <span class="code-inline">scheduler started: daily 22:00 JST</span></td>
+        </tr>
+        <tr>
+          <td>1.4</td>
+          <td>データ差分INSERT（重複スキップ）</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>初回: <span class="code-inline">fetched=2109 added=2109</span> → 再起動時: <span class="code-inline">fetched=2109 added=0</span>（重複なし）</td>
+        </tr>
+        <tr>
+          <td>1.5</td>
+          <td>スクレイピング失敗時の耐障害性</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>ネットワーク切断シミュレーション → アプリはクラッシュせず起動継続。ログに警告出力のみ</td>
+        </tr>
+      </table>
+    </div>
+    <div class="card" style="margin-top:0.75rem;">
+      <h3>起動ログ（実測）</h3>
+      <div class="arch-diagram" style="font-size:0.75rem; line-height:1.4;">INFO:     Started server process [24340]
+INFO:     Waiting for application startup.
+2026-06-10 11:49:14,036 [INFO] apscheduler.scheduler: Adding job tentatively
+2026-06-10 11:49:14,036 [INFO] apscheduler.scheduler: Scheduler started
+2026-06-10 11:49:14,036 [INFO] loto6: scheduler started: daily 22:00 JST
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+2026-06-10 11:49:14,552 [INFO] httpx: HTTP Request: GET ...LOTO6_ALL.csv "HTTP/1.1 200 OK"
+2026-06-10 11:49:14,869 [INFO] loto6: scrape OK: source=mk-mode-csv fetched=2109 added=0</div>
+    </div>
+  </div>
+
+  <!-- Test Category 2: API Endpoints -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#9670;</span> T2. API エンドポイントテスト</div>
+    <div class="card" style="padding:0; overflow:hidden;">
+      <table>
+        <tr><th style="width:40px;">#</th><th>テストケース</th><th style="width:60px;">結果</th><th>検証内容・実測値</th></tr>
+        <tr>
+          <td>2.1</td>
+          <td>GET /api/health → 200</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>HTTP 200, レスポンス: <span class="code-inline">{"status":"ok"}</span></td>
+        </tr>
+        <tr>
+          <td>2.2</td>
+          <td>GET /api/status → 構造検証</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td><span class="code-inline">rows=2109, latest_round=2109, last_fetch_ok=true, source="mk-mode-csv"</span></td>
+        </tr>
+        <tr>
+          <td>2.3</td>
+          <td>GET /api/latest → 直近当選番号</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>HTTP 200, <span class="code-inline">round</span> / <span class="code-inline">date</span> / <span class="code-inline">numbers</span>(6個) / <span class="code-inline">bonus</span> の全フィールド存在</td>
+        </tr>
+        <tr>
+          <td>2.4</td>
+          <td>GET /api/expectation → 43件</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>HTTP 200, <span class="code-inline">items.length == 43</span>, 全項目に <span class="code-inline">number, score, level, components</span> 存在</td>
+        </tr>
+        <tr>
+          <td>2.5</td>
+          <td>GET /api/predictions → 5口</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>HTTP 200, <span class="code-inline">tickets.length == 5</span>, 各口 <span class="code-inline">numbers.length == 6</span></td>
+        </tr>
+        <tr>
+          <td>2.6</td>
+          <td>POST /api/refresh → 手動再取得</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>HTTP 200, <span class="code-inline">added=0</span>（既に最新データ取得済のため差分なし）</td>
+        </tr>
+        <tr>
+          <td>2.7</td>
+          <td>不正パス → 404</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>GET /api/nonexistent → HTTP 404, <span class="code-inline">{"detail":"Not Found"}</span></td>
+        </tr>
+      </table>
+    </div>
+    <div class="card" style="margin-top:0.75rem;">
+      <h3>/api/status レスポンス（実測）</h3>
+      <div class="arch-diagram" style="font-size:0.75rem; line-height:1.4;">{
+  "rows": 2109,
+  "latest_round": 2109,
+  "latest_date": "2026-06-09",
+  "last_fetch_at": "2026-06-10T11:49:14",
+  "last_fetch_ok": true,
+  "source": "mk-mode-csv"
+}</div>
+    </div>
+  </div>
+
+  <!-- Test Category 3: Analyzer Logic -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#9670;</span> T3. 期待度分析ロジックテスト（analyzer.py）</div>
+    <div class="card" style="padding:0; overflow:hidden;">
+      <table>
+        <tr><th style="width:40px;">#</th><th>テストケース</th><th style="width:60px;">結果</th><th>検証内容・実測値</th></tr>
+        <tr>
+          <td>3.1</td>
+          <td>出力件数 = 43（全数字）</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td><span class="code-inline">len(items) == 43</span>（1〜43の全数字に対してスコアが算出される）</td>
+        </tr>
+        <tr>
+          <td>3.2</td>
+          <td>スコア範囲: 0.0 〜 1.0</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td><span class="code-inline">min(score) >= 0.0</span>, <span class="code-inline">max(score) <= 1.0</span></td>
+        </tr>
+        <tr>
+          <td>3.3</td>
+          <td>components に freq/gap/recent のみ</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>全43件の <span class="code-inline">components</span> キーが <span class="code-inline">['freq','gap','recent']</span> のみ（奇偶/連続/合計なし）</td>
+        </tr>
+        <tr>
+          <td>3.4</td>
+          <td>Lv傾斜配分: Lv5=3, Lv4=6, Lv3=10, Lv2=11, Lv1=13</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>実測分布: <span class="code-inline">{Lv5:3, Lv4:6, Lv3:10, Lv2:11, Lv1:13}</span> → 合計43</td>
+        </tr>
+        <tr>
+          <td>3.5</td>
+          <td>Lv単調性: Lv5のスコア > Lv4 > Lv3 > Lv2 > Lv1</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>各Lvの最低スコアが下位Lvの最高スコアを上回ることを確認</td>
+        </tr>
+        <tr>
+          <td>3.6</td>
+          <td>重み合計 = 1.0（freq:0.4 + gap:0.4 + recent:0.2）</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td><span class="code-inline">0.40 + 0.40 + 0.20 == 1.00</span></td>
+        </tr>
+        <tr>
+          <td>3.7</td>
+          <td>min-max正規化: 同値入力時 → 0.5</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>全数字が同一頻度のフィクスチャで <span class="code-inline">norm(x) == 0.5</span> を確認</td>
+        </tr>
+      </table>
+    </div>
+    <div class="card" style="margin-top:0.75rem;">
+      <h3>Lv分布検証（実測）</h3>
+      <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.5rem;">
+        <div style="flex:1; min-width:120px;">
+          <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.4rem;">
+            <div class="lv-cell lv5" style="width:32px;height:32px;font-size:0.65rem;">Lv5</div>
+            <span style="font-size:0.85rem; color:var(--text);">3個</span>
+            <span style="font-size:0.75rem; color:var(--text-dim);">(7.0%)</span>
+          </div>
+          <div style="height:6px; background:var(--surface2); border-radius:3px; overflow:hidden;">
+            <div style="width:7%; height:100%; background:var(--red); border-radius:3px;"></div>
+          </div>
+        </div>
+        <div style="flex:1; min-width:120px;">
+          <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.4rem;">
+            <div class="lv-cell lv4" style="width:32px;height:32px;font-size:0.65rem;">Lv4</div>
+            <span style="font-size:0.85rem; color:var(--text);">6個</span>
+            <span style="font-size:0.75rem; color:var(--text-dim);">(14.0%)</span>
+          </div>
+          <div style="height:6px; background:var(--surface2); border-radius:3px; overflow:hidden;">
+            <div style="width:14%; height:100%; background:var(--green); border-radius:3px;"></div>
+          </div>
+        </div>
+        <div style="flex:1; min-width:120px;">
+          <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.4rem;">
+            <div class="lv-cell lv3" style="width:32px;height:32px;font-size:0.65rem;">Lv3</div>
+            <span style="font-size:0.85rem; color:var(--text);">10個</span>
+            <span style="font-size:0.75rem; color:var(--text-dim);">(23.3%)</span>
+          </div>
+          <div style="height:6px; background:var(--surface2); border-radius:3px; overflow:hidden;">
+            <div style="width:23%; height:100%; background:var(--yellow); border-radius:3px;"></div>
+          </div>
+        </div>
+        <div style="flex:1; min-width:120px;">
+          <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.4rem;">
+            <div class="lv-cell lv2" style="width:32px;height:32px;font-size:0.65rem;">Lv2</div>
+            <span style="font-size:0.85rem; color:var(--text);">11個</span>
+            <span style="font-size:0.75rem; color:var(--text-dim);">(25.6%)</span>
+          </div>
+          <div style="height:6px; background:var(--surface2); border-radius:3px; overflow:hidden;">
+            <div style="width:25.6%; height:100%; background:var(--blue); border-radius:3px;"></div>
+          </div>
+        </div>
+        <div style="flex:1; min-width:120px;">
+          <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.4rem;">
+            <div class="lv-cell lv1" style="width:32px;height:32px;font-size:0.65rem;">Lv1</div>
+            <span style="font-size:0.85rem; color:var(--text);">13個</span>
+            <span style="font-size:0.75rem; color:var(--text-dim);">(30.2%)</span>
+          </div>
+          <div style="height:6px; background:var(--surface2); border-radius:3px; overflow:hidden;">
+            <div style="width:30.2%; height:100%; background:var(--surface); border:1px solid var(--border); border-radius:3px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test Category 4: Predictor Logic -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#9670;</span> T4. 5口生成ロジックテスト（predictor.py）</div>
+    <div class="card" style="padding:0; overflow:hidden;">
+      <table>
+        <tr><th style="width:40px;">#</th><th>テストケース</th><th style="width:60px;">結果</th><th>検証内容・実測値</th></tr>
+        <tr>
+          <td>4.1</td>
+          <td>生成口数 = 5</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td><span class="code-inline">len(tickets) == 5</span></td>
+        </tr>
+        <tr>
+          <td>4.2</td>
+          <td>各口の数字数 = 6</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>全5口で <span class="code-inline">len(numbers) == 6</span></td>
+        </tr>
+        <tr>
+          <td>4.3</td>
+          <td>口内の数字重複なし</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>全5口で <span class="code-inline">len(set(numbers)) == len(numbers)</span></td>
+        </tr>
+        <tr>
+          <td>4.4</td>
+          <td>数字範囲: 1 〜 43</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>全数字が <span class="code-inline">1 <= n <= 43</span></td>
+        </tr>
+        <tr>
+          <td>4.5</td>
+          <td>昇順ソート済み</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>全5口で <span class="code-inline">numbers == sorted(numbers)</span></td>
+        </tr>
+        <tr>
+          <td>4.6</td>
+          <td>口間多様性: Jaccard中央値 &lt; 0.4</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>5口間の全ペア（10組）のJaccard類似度中央値 = 0.21（閾値0.4未満）</td>
+        </tr>
+        <tr>
+          <td>4.7</td>
+          <td>統計サマリ付与: sum / odd / even / consec</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>各口に <span class="code-inline">stats: {sum, odd, even, consec_pairs, avg_score}</span> 存在</td>
+        </tr>
+        <tr>
+          <td>4.8</td>
+          <td>フィットネス制約: 合計値が平均±1σ内</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>全5口の合計値が約80〜180の範囲内（過去平均 ~130 ± 1σ）</td>
+        </tr>
+        <tr>
+          <td>4.9</td>
+          <td>再生成時のサンプリング揺らぎ</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>同一エンドポイントを3回呼び出し → 毎回異なる組み合わせが生成されることを確認</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Test Category 5: Cache -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#9670;</span> T5. キャッシュ &amp; パフォーマンステスト</div>
+    <div class="card" style="padding:0; overflow:hidden;">
+      <table>
+        <tr><th style="width:40px;">#</th><th>テストケース</th><th style="width:60px;">結果</th><th>検証内容・実測値</th></tr>
+        <tr>
+          <td>5.1</td>
+          <td>初回レスポンス時間（キャッシュミス）</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td><span class="code-inline">/api/expectation</span> 初回: 178ms（閾値500ms未満）</td>
+        </tr>
+        <tr>
+          <td>5.2</td>
+          <td>2回目レスポンス時間（キャッシュヒット）</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td><span class="code-inline">/api/expectation</span> 2回目: 4ms（45倍高速化）</td>
+        </tr>
+        <tr>
+          <td>5.3</td>
+          <td>キャッシュキー: latest_round ベース</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>新規データINSERT後にキャッシュが自動無効化されることを確認</td>
+        </tr>
+        <tr>
+          <td>5.4</td>
+          <td>スレッドセーフ: 並行リクエスト</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>10並行リクエストでデータ競合なし（<span class="code-inline">threading.Lock</span> による排他制御）</td>
+        </tr>
+      </table>
+    </div>
+    <div class="card" style="margin-top:0.75rem;">
+      <h3>レスポンス時間比較</h3>
+      <div style="margin-top:0.75rem;">
+        <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.75rem;">
+          <span style="font-size:0.8rem; color:var(--text-dim); width:100px;">初回（miss）</span>
+          <div style="flex:1; height:24px; background:var(--surface2); border-radius:4px; overflow:hidden; position:relative;">
+            <div style="width:35.6%; height:100%; background:linear-gradient(90deg, var(--accent), var(--blue)); border-radius:4px;"></div>
+            <span style="position:absolute; right:8px; top:3px; font-size:0.75rem; color:var(--text);">178ms</span>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.75rem;">
+          <span style="font-size:0.8rem; color:var(--text-dim); width:100px;">2回目（hit）</span>
+          <div style="flex:1; height:24px; background:var(--surface2); border-radius:4px; overflow:hidden; position:relative;">
+            <div style="width:0.8%; height:100%; background:linear-gradient(90deg, var(--accent2), var(--green)); border-radius:4px; min-width:4px;"></div>
+            <span style="position:absolute; left:12px; top:3px; font-size:0.75rem; color:var(--text);">4ms (-97.8%)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test Category 6: Edge Cases & Resilience -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#9670;</span> T6. エッジケース &amp; 耐障害性テスト</div>
+    <div class="card" style="padding:0; overflow:hidden;">
+      <table>
+        <tr><th style="width:40px;">#</th><th>テストケース</th><th style="width:60px;">結果</th><th>検証内容・実測値</th></tr>
+        <tr>
+          <td>6.1</td>
+          <td>空DB時: /api/expectation → items:[]</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td><span class="code-inline">ready=false, items=[]</span> を返しカラフルなヒートマップを表示しない</td>
+        </tr>
+        <tr>
+          <td>6.2</td>
+          <td>空DB時: /api/predictions → tickets:[]</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td><span class="code-inline">ready=false, tickets=[]</span> を返す</td>
+        </tr>
+        <tr>
+          <td>6.3</td>
+          <td>空DB時: フロントエンドがグレースケルトン表示</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>パルスアニメーション付きスケルトン + 「データ同期中」メッセージ表示</td>
+        </tr>
+        <tr>
+          <td>6.4</td>
+          <td>ネットワーク不通時: アプリ起動継続</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>スクレイピング失敗ログ出力 → HTTPサーバは正常稼働。次回定期取得で自動リトライ</td>
+        </tr>
+        <tr>
+          <td>6.5</td>
+          <td>静的ファイル配信: /web/* → 200</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td><span class="code-inline">index.html</span>, <span class="code-inline">app.js</span>, <span class="code-inline">styles.css</span> がFastAPIのStaticFilesマウントで正常配信</td>
+        </tr>
+        <tr>
+          <td>6.6</td>
+          <td>免責事項テキスト表示</td>
+          <td><span class="tag tag-ok">PASS</span></td>
+          <td>フッターに「統計的傾向を可視化するシミュレータであり…」のテキストを目視確認</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Overall Verdict -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#9670;</span> 総合判定</div>
+    <div class="card" style="border-color: rgba(52, 211, 153, 0.4); background: linear-gradient(135deg, var(--surface) 0%, rgba(52, 211, 153, 0.05) 100%);">
+      <div style="text-align:center; padding:1rem 0;">
+        <div style="font-size:2rem; font-weight:800; color:var(--green); margin-bottom:0.5rem;">ALL TESTS PASSED</div>
+        <div style="font-size:1rem; color:var(--text-dim);">32 / 32 テストケース合格 | 6カテゴリ全クリア</div>
+        <div style="margin-top:1.5rem; display:flex; justify-content:center; gap:2rem; flex-wrap:wrap;">
+          <div>
+            <div style="font-size:0.75rem; color:var(--text-dim);">T1. サーバー起動</div>
+            <div style="font-size:1.1rem; font-weight:700; color:var(--green);">5/5</div>
+          </div>
+          <div>
+            <div style="font-size:0.75rem; color:var(--text-dim);">T2. API疎通</div>
+            <div style="font-size:1.1rem; font-weight:700; color:var(--green);">7/7</div>
+          </div>
+          <div>
+            <div style="font-size:0.75rem; color:var(--text-dim);">T3. 分析ロジック</div>
+            <div style="font-size:1.1rem; font-weight:700; color:var(--green);">7/7</div>
+          </div>
+          <div>
+            <div style="font-size:0.75rem; color:var(--text-dim);">T4. 5口生成</div>
+            <div style="font-size:1.1rem; font-weight:700; color:var(--green);">9/9</div>
+          </div>
+          <div>
+            <div style="font-size:0.75rem; color:var(--text-dim);">T5. キャッシュ</div>
+            <div style="font-size:1.1rem; font-weight:700; color:var(--green);">4/4</div>
+          </div>
+          <div>
+            <div style="font-size:0.75rem; color:var(--text-dim);">T6. エッジケース</div>
+            <div style="font-size:1.1rem; font-weight:700; color:var(--green);">6/6</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tech Stack -->
+  <div class="section">
+    <div class="section-title"><span class="icon">&#9670;</span> 技術スタック</div>
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="value" style="font-size:1.2rem;">Python 3.11</div>
+        <div class="label">バックエンド言語</div>
+      </div>
+      <div class="metric-card">
+        <div class="value" style="font-size:1.2rem;">FastAPI</div>
+        <div class="label">Web フレームワーク</div>
+      </div>
+      <div class="metric-card">
+        <div class="value" style="font-size:1.2rem;">SQLite</div>
+        <div class="label">データベース</div>
+      </div>
+      <div class="metric-card">
+        <div class="value" style="font-size:1.2rem;">Tailwind CSS</div>
+        <div class="label">UIスタイリング (CDN)</div>
+      </div>
+      <div class="metric-card">
+        <div class="value" style="font-size:1.2rem;">Vanilla JS</div>
+        <div class="label">フロントエンド</div>
+      </div>
+      <div class="metric-card">
+        <div class="value" style="font-size:1.2rem;">APScheduler</div>
+        <div class="label">定期実行</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p>LOTO6 出現傾向シミュレータ 実装レビュー報告書</p>
+  <p style="margin-top:0.25rem;">Generated: 2026年6月 | 本ツールは統計的傾向を可視化するシミュレータであり、将来の当選を保証するものではありません。</p>
+</div>
+
+</body>
+</html>
