@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LOTO6 出現傾向シミュレータ</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="/web/styles.css">
+</head>
+<body class="min-h-screen bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-slate-100">
+
+<!-- Header -->
+<header class="border-b border-slate-700/50 backdrop-blur">
+  <div class="max-w-5xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-2">
+    <div>
+      <h1 class="text-xl md:text-2xl font-extrabold bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+        LOTO6 出現傾向シミュレータ
+      </h1>
+      <p class="text-xs text-slate-400 mt-0.5">過去データに基づく統計シミュレーション</p>
+    </div>
+    <div id="statusBadge" class="text-xs px-3 py-1.5 rounded-full bg-slate-800 border border-slate-600 text-slate-400">
+      <span class="spin">&#8635;</span> 読み込み中...
+    </div>
+  </div>
+</header>
+
+<main class="max-w-5xl mx-auto px-4 py-6 space-y-8">
+
+  <!-- Predictions Section -->
+  <section>
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-bold text-slate-200">出現傾向シミュレーション <span class="text-sm font-normal text-slate-400">（5口 / 1,000円分）</span></h2>
+      <button id="btnRegenerate" onclick="loadPredictions()" class="text-xs px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors">
+        再シミュレーション
+      </button>
+    </div>
+    <div id="ticketsGrid" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <!-- skeleton -->
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+      <div class="skeleton-card"></div>
+    </div>
+  </section>
+
+  <!-- Latest Draw & Info -->
+  <section id="infoBar" class="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
+    <div class="info-cell">
+      <div class="text-xs text-slate-400">直近当選番号</div>
+      <div id="latestNumbers" class="text-sm font-bold text-slate-200 mt-1">---</div>
+    </div>
+    <div class="info-cell">
+      <div class="text-xs text-slate-400">直近回号</div>
+      <div id="latestRound" class="text-sm font-bold text-slate-200 mt-1">---</div>
+    </div>
+    <div class="info-cell">
+      <div class="text-xs text-slate-400">学習データ件数</div>
+      <div id="totalRows" class="text-sm font-bold text-slate-200 mt-1">---</div>
+    </div>
+    <div class="info-cell">
+      <div class="text-xs text-slate-400">最終更新</div>
+      <div id="lastFetch" class="text-sm font-bold text-slate-200 mt-1">---</div>
+    </div>
+  </section>
+
+  <!-- Heatmap Section -->
+  <section>
+    <h2 class="text-lg font-bold text-slate-200 mb-3">期待度ヒートマップ <span class="text-sm font-normal text-slate-400">（1〜43）</span></h2>
+
+    <!-- Legend -->
+    <div class="flex items-center gap-2 mb-4 text-xs flex-wrap">
+      <span class="text-slate-400">期待度:</span>
+      <span class="legend-cell lv1-bg">Lv1 低</span>
+      <span class="legend-cell lv2-bg">Lv2</span>
+      <span class="legend-cell lv3-bg">Lv3 中</span>
+      <span class="legend-cell lv4-bg">Lv4</span>
+      <span class="legend-cell lv5-bg">Lv5 高</span>
+    </div>
+
+    <div id="heatmapGrid" class="grid grid-cols-7 gap-1.5 md:gap-2">
+      <!-- filled by JS -->
+    </div>
+  </section>
+
+</main>
+
+<!-- Footer -->
+<footer class="border-t border-slate-700/50 mt-12">
+  <div class="max-w-5xl mx-auto px-4 py-6 text-center text-xs text-slate-500 space-y-1">
+    <p>本ツールは過去のロト6抽選データから統計的傾向を可視化するシミュレータです。</p>
+    <p>数字の選出は毎回独立した完全ランダム抽選であり、過去の傾向が将来の結果を保証するものではありません。</p>
+    <p>購入の判断はご自身の責任でお願いいたします。</p>
+  </div>
+</footer>
+
+<!-- Tooltip -->
+<div id="tooltip" class="tooltip hidden"></div>
+
+<script src="/web/app.js"></script>
+</body>
+</html>
